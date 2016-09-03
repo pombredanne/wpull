@@ -68,29 +68,30 @@ class TestURL(unittest.TestCase):
 
     def test_url_info_parts(self):
         url_info = URLInfo.parse(
-            'HTTP://userName:pass%3Aword@[A::1]:81/ásdF/ghjK?a=b=c&D#/?')
+            'HTTP://userName:pass%3Aword@[A::1]:81/ásdF\u200C/ghjK?a=b=c&D#/?')
         self.assertEqual(
-            'http://userName:pass:word@[a::1]:81/%C3%A1sdF/ghjK?a=b=c&D',
+            'http://userName:pass:word@[a::1]:81/'
+            '%C3%A1sdF%E2%80%8C/ghjK?a=b=c&D',
             url_info.url
         )
         self.assertEqual('http', url_info.scheme)
         self.assertEqual('userName:pass%3Aword@[A::1]:81',
                          url_info.authority)
-        self.assertEqual('/ásdF/ghjK?a=b=c&D#/?', url_info.resource)
+        self.assertEqual('/ásdF\u200C/ghjK?a=b=c&D#/?', url_info.resource)
         self.assertEqual('userName', url_info.username)
         self.assertEqual('pass:word', url_info.password)
         self.assertEqual('[A::1]:81', url_info.host)
         self.assertEqual('[a::1]:81', url_info.hostname_with_port)
         self.assertEqual('a::1', url_info.hostname)
         self.assertEqual(81, url_info.port)
-        self.assertEqual('/%C3%A1sdF/ghjK', url_info.path)
+        self.assertEqual('/%C3%A1sdF%E2%80%8C/ghjK', url_info.path)
         self.assertEqual('a=b=c&D', url_info.query)
         self.assertEqual('/?', url_info.fragment)
         self.assertEqual('utf-8', url_info.encoding)
         self.assertEqual(
-            'HTTP://userName:pass%3Aword@[A::1]:81/ásdF/ghjK?a=b=c&D#/?',
+            'HTTP://userName:pass%3Aword@[A::1]:81/ásdF\u200C/ghjK?a=b=c&D#/?',
             url_info.raw)
-        self.assertEqual(('/%C3%A1sdF', 'ghjK'), url_info.split_path())
+        self.assertEqual(('/%C3%A1sdF%E2%80%8C', 'ghjK'), url_info.split_path())
 
         url_info = URLInfo.parse(
             'Ftp://N00B:hunter2@LocalHost.Example/mydocs/'
@@ -243,8 +244,8 @@ class TestURL(unittest.TestCase):
         self.assertRaises(ValueError, URLInfo.parse, ':38/3')
         self.assertRaises(ValueError, URLInfo.parse, 'http://][a:@1]')
         self.assertRaises(ValueError, URLInfo.parse, 'http://[[aa]]:4:]6')
-        self.assertNotIn('[', URLInfo.parse('http://[a]').hostname)
-        self.assertNotIn(']', URLInfo.parse('http://[a]').hostname)
+        self.assertRaises(ValueError, URLInfo.parse, 'http://[a]')
+        self.assertRaises(ValueError, URLInfo.parse, 'http://[a]')
         self.assertRaises(ValueError, URLInfo.parse, 'http://[[a]')
         self.assertRaises(ValueError, URLInfo.parse, 'http://[[a]]a]')
         self.assertRaises(ValueError, URLInfo.parse, 'http://[[a:a]]')
@@ -290,6 +291,14 @@ class TestURL(unittest.TestCase):
             ValueError, URLInfo.parse, 'http://[…]/python.xml%22')
         self.assertRaises(
             ValueError, URLInfo.parse, 'http://[.]/python.xml%22')
+        self.assertRaises(
+            ValueError, URLInfo.parse, 
+            'http://wow:99999999999999999999999999999999999999999999999999999'
+            '9999999999999999999999999999999999999999999999999999999999999999')
+        self.assertRaises(
+            ValueError, URLInfo.parse, 
+            'http://wow:-9999999999999999999999999999999999999999999999999999'
+            '9999999999999999999999999999999999999999999999999999999999999999')
 
     def test_url_info_path_folding(self):
         self.assertEqual(
@@ -458,41 +467,40 @@ class TestURL(unittest.TestCase):
         for url in urls:
             URLInfo.parse(URLInfo.parse(url).url)
 
-    @unittest.skip('TODO: implement these')
     def test_ip_address_normalization(self):
         self.assertEqual(
             'http://192.0.2.235/',
-            URLInfo.parse('https://0xC0.0x00.0x02.0xEB').url
+            URLInfo.parse('http://0xC0.0x00.0x02.0xEB').url
         )
         self.assertEqual(
             'http://192.0.2.235/',
-            URLInfo.parse('https://0301.1680.0002.0353').url
+            URLInfo.parse('http://0300.0000.0002.0353').url
         )
         self.assertEqual(
             'http://192.0.2.235/',
-            URLInfo.parse('https://0xC00002EB/').url
+            URLInfo.parse('http://0xC00002EB/').url
         )
         self.assertEqual(
             'http://192.0.2.235/',
-            URLInfo.parse('https://3221226219/').url
+            URLInfo.parse('http://3221226219/').url
         )
         self.assertEqual(
             'http://192.0.2.235/',
-            URLInfo.parse('https://030000001353/').url
+            URLInfo.parse('http://030000001353/').url
         )
         self.assertEqual(
-            'https://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:8080/ipv6',
+            'http://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:8080/ipv6',
             URLInfo.parse(
-                'https://[2001:db8:85a3:8d3:1319:8a2e:370:7348]:8080/ipv6'
+                'http://[2001:Db8:85a3:8d3:1319:8a2e:370:7348]:8080/ipv6'
             ).url
         )
         self.assertEqual(
-            'https://[::1]/',
-            URLInfo.parse('https://[0:0:0:0:0:0:0:1]').url
+            'http://[::1]/',
+            URLInfo.parse('http://[0:0:0:0:0:0:0:1]').url
         )
         self.assertEqual(
-            'https://[::ffff:192.0.2.128]/',
-            URLInfo.parse('https://[::ffff:c000:0280]').url
+            'http://[::ffff:c000:280]/',
+            URLInfo.parse('http://[::ffff:192.0.2.128]/').url
         )
 
     def test_url_info_to_dict(self):
